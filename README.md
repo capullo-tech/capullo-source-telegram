@@ -56,3 +56,7 @@ transparent. There is no cleartext path. Consuming apps should also set `allowBa
 exclude the `tdlib/` dir) so the session isn't captured in cloud backups. Dev builds resolve `capullo-audio-contracts` from a
 sibling checkout (composite build); release/jitpack builds resolve it from
 `com.github.capullo-tech:capullo-audio-contracts`.
+
+## License
+
+Copyright 2026 capullo-tech. Licensed under GPLv3 - see [`LICENSE`](LICENSE) (extracted from Telecloud; bundles TDLib under the Boost Software License via lib-tdlib / setup_tdlib.sh).
