@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source lib
+        uses: actions/checkout@v4
+        with:
+          path: capullo-source-telegram
+          lfs: true
+      # Sibling checkout so settings.gradle.kts `includeBuild("../capullo-audio-contracts")`
+      # resolves. Both repos are public -> default token can read the contracts repo.
+      - name: Checkout contracts (sibling for includeBuild)
+        uses: actions/checkout@v4
+        with:
+          repository: capullo-tech/capullo-audio-contracts
+          path: capullo-audio-contracts
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      # :tdlib is script-populated (TDLib Java API + prebuilt .so from TGX-Android), NOT a git
+      # submodule -- must run before any Gradle task or the module has no sources. git-lfs pulls
+      # the .so binaries.
+      - name: Populate :tdlib (setup_tdlib.sh)
+        working-directory: capullo-source-telegram
+        run: |
+          chmod +x scripts/setup_tdlib.sh
+          ./scripts/setup_tdlib.sh
+      # Contract-validation driver: the fake-driven JVM unit test that actually exercises
+      # mediaRequestFor / queue() / onQueueAdvanced (the behavioral fit, not just type-level).
+      - name: Run contract-validation unit test
+        working-directory: capullo-source-telegram
+        run: ./gradlew :capullo-source-telegram:testDebugUnitTest --no-daemon
+      - name: Assemble harness APK
+        working-directory: capullo-source-telegram
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: capullo-source-telegram-harness-${{ github.sha }}
+          path: 'capullo-source-telegram/**/build/outputs/apk/debug/*.apk'

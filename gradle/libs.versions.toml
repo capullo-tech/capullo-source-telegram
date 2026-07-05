@@ -1,0 +1,38 @@
+# capullo-source-telegram (Telegram/TDLib ingress, Layer 3) - org toolchain baseline, stable pins.
+[versions]
+agp = "9.1.0"
+kotlin = "2.3.10"
+# KSP for Room's annotation processing. KSP2's 2.3.x line is decoupled from the exact Kotlin patch
+# (2.3.9 is the latest against Kotlin 2.3.x); it drives room-compiler below.
+ksp = "2.3.9"
+coreKtx = "1.17.0"
+coroutines = "1.10.2"
+room = "2.8.4"
+annotation = "1.9.1"
+junit = "4.13.2"
+androidxJunit = "1.2.1"
+espresso = "3.6.1"
+# Contracts (Layer 1): jitpack coordinate for published builds; a local composite build
+# (settings.gradle.kts) substitutes the sibling project when it's checked out next to this repo.
+contracts = "main-SNAPSHOT"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+# Track index / on-disk cache persistence (media_messages table).
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+# The integrator SPI (Layer 1). jitpack coordinate; composite build substitutes it locally.
+capullo-audio-contracts = { module = "com.github.capullo-tech:capullo-audio-contracts", version.ref = "contracts" }
+
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+androidx-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
+androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

@@ -1,0 +1,15 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.idea/
+*.iml
+local.properties
+.DS_Store
+.cxx/
+
+# TDLib prebuilt sources (populated by scripts/setup_tdlib.sh; NOT a git submodule)
+tdlib/src/main/java/
+tdlib/src/main/jniLibs/
+
+# Windows build-host log (written over the share)
+build-share.log

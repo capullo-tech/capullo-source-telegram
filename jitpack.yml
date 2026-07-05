@@ -1,0 +1,11 @@
+# jitpack builds & publishes only the library module (the :app harness is dev-only).
+# Resolves contracts from jitpack; the Android SDK is provided by jitpack.
+# :tdlib is script-populated (TDLib Java API + prebuilt .so from TGX-Android), NOT a submodule,
+# so setup_tdlib.sh must run before Gradle can see the module sources.
+jdk:
+  - openjdk17
+before_install:
+  - chmod +x scripts/setup_tdlib.sh
+  - ./scripts/setup_tdlib.sh
+install:
+  - ./gradlew :capullo-source-telegram:publishToMavenLocal -x test -x lint
