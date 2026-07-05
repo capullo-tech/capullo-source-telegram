@@ -8,6 +8,10 @@
 set -euo pipefail
 
 REPO="https://github.com/TGX-Android/tdlib.git"
+# Pinned commit for REPRODUCIBLE builds. TGX-Android/tdlib publishes no version tags (main only), so
+# we pin main's HEAD by SHA. Previously this was `git clone --depth=1` of main = always latest → the
+# TDLib version could drift silently between builds. Bump deliberately after verifying a build.
+REF="63524bd14bebb9d7f9f04a1747675501ec41ea0a"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 TDLIB_MODULE="$PROJECT_DIR/tdlib"
@@ -15,8 +19,14 @@ TEMP_DIR="$(mktemp -d)"
 
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
-echo "→ Cloning TGX-Android/tdlib (shallow, with LFS)..."
-GIT_LFS_SKIP_SMUDGE=0 git clone --depth=1 "$REPO" "$TEMP_DIR/tdlib"
+echo "→ Fetching TGX-Android/tdlib @ ${REF:0:12} (shallow, pinned)..."
+# Fetch the exact pinned commit shallowly (GitHub allows fetch-by-SHA for commits reachable from a
+# ref). Skip LFS smudge here; the .so are pulled explicitly below so the no-git-lfs fallback also works.
+mkdir -p "$TEMP_DIR/tdlib"
+git -C "$TEMP_DIR/tdlib" init -q
+git -C "$TEMP_DIR/tdlib" remote add origin "$REPO"
+GIT_LFS_SKIP_SMUDGE=1 git -C "$TEMP_DIR/tdlib" fetch --depth=1 origin "$REF"
+git -C "$TEMP_DIR/tdlib" checkout -q FETCH_HEAD
 # If git-lfs is installed, pull the actual .so binaries (repo uses LFS for them)
 if command -v git-lfs &>/dev/null; then
     git -C "$TEMP_DIR/tdlib" lfs pull
