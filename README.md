@@ -15,8 +15,11 @@ validation radiobrowser only had at the type level.
 | Module | What |
 |---|---|
 | `:capullo-source-telegram` | The library: `TelegramSource` (`MediaSourceProvider` + `NowPlayingSource`), TDLib client, chat sync, Room track index, on-demand download + 2-track prefetch. Namespace `tech.capullo.source.telegram`. |
-| `:tdlib` | TDLib Java API (`org.drinkless.tdlib`) + prebuilt `.so`. **Script-populated, not a git submodule** - run `scripts/setup_tdlib.sh` before building. |
 | `:app` | Minimal harness proving the library links and assembles. |
+
+TDLib (the `org.drinkless.tdlib` Java API + prebuilt `libtdjni.so`) comes from the
+[`lib-tdlib-android`](https://github.com/capullo-tech/lib-tdlib-android) jitpack AAR (Layer 0) - a
+normal dependency, no `setup_tdlib.sh` / git-lfs.
 
 ## The contract seam
 
@@ -40,10 +43,11 @@ as it does for live radio. This implies the engine must call `mediaRequestFor(id
 ## Build
 
 ```bash
-./scripts/setup_tdlib.sh                                  # populate :tdlib (TGX-Android prebuilt, git-lfs)
 ./gradlew :capullo-source-telegram:testDebugUnitTest      # the contract-validation driver
 ./gradlew :app:assembleDebug                              # harness APK
 ```
+
+TDLib resolves from `com.github.capullo-tech:lib-tdlib-android` (jitpack) - nothing to populate.
 
 The library is DI-free (no Hilt): the consuming app supplies `Context`, credentials
 (`TelegramCredentials`), and a coroutine scope.
@@ -59,4 +63,4 @@ sibling checkout (composite build); release/jitpack builds resolve it from
 
 ## License
 
-Copyright 2026 capullo-tech. Licensed under GPLv3 - see [`LICENSE`](LICENSE) (extracted from Telecloud; bundles TDLib under the Boost Software License via lib-tdlib / setup_tdlib.sh).
+Copyright 2026 capullo-tech. Licensed under GPLv3 - see [`LICENSE`](LICENSE). TDLib is bundled (under the Boost Software License) via the [`lib-tdlib-android`](https://github.com/capullo-tech/lib-tdlib-android) dependency.

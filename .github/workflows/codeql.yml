@@ -22,19 +22,12 @@ jobs:
       # none is Java-only).
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          lfs: true
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      # :tdlib is script-populated (NOT a submodule); populate before the traced compile so the
-      # module's sources exist.
-      - name: Populate :tdlib (setup_tdlib.sh)
-        run: |
-          chmod +x scripts/setup_tdlib.sh
-          ./scripts/setup_tdlib.sh
+      # TDLib resolves from the lib-tdlib-android jitpack AAR - no setup_tdlib.sh / git-lfs step.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:

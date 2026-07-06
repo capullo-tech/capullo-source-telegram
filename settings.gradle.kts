@@ -23,9 +23,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "capullo-source-telegram"
 include(":capullo-source-telegram")
-// :tdlib holds the TDLib Java API + prebuilt .so, populated by scripts/setup_tdlib.sh (NOT a
-// git submodule). Must be populated before a build - CI/jitpack run the script first.
-include(":tdlib")
+// TDLib (Java API + prebuilt .so) now comes from the lib-tdlib-android jitpack AAR (Layer 0), so
+// there is no local :tdlib module / setup_tdlib.sh / git-lfs anymore.
 include(":app") // harness/demo app: exercises TelegramSource against the SPI.
 
 // Dev/release toggle: when the SPI repo is checked out as a sibling (local co-development or the CI

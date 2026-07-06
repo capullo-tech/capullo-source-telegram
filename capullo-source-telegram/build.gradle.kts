@@ -48,8 +48,9 @@ dependencies {
     // (MediaSourceProvider, NowPlaying via NowPlayingSource, PlaybackQueue).
     api(libs.capullo.audio.contracts)
 
-    // TDLib Java API + prebuilt native libs (script-populated module, NOT a submodule).
-    api(project(":tdlib"))
+    // TDLib Java API + prebuilt native libs, via the lib-tdlib-android jitpack AAR (Layer 0).
+    // `api` so consumers get org.drinkless.tdlib.* + libtdjni.so transitively.
+    api(libs.lib.tdlib.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
