@@ -246,10 +246,32 @@ class TdLibTelegramClient(
     }
 
     override suspend fun setOwnReaction(chatId: Long, messageId: Long, emoji: String?) {
-        // SetMessageReactions replaces all reactions chosen by the current user
-        val types: Array<TdApi.ReactionType> =
-            if (emoji == null) emptyArray() else arrayOf(TdApi.ReactionTypeEmoji(emoji))
-        send<TdApi.Ok>(TdApi.SetMessageReactions(chatId, messageId, types, false))
+        // AddMessageReaction/RemoveMessageReaction are the user-facing calls. SetMessageReactions
+        // is documented "for bots only" and errors for a normal account - that error was swallowed
+        // upstream, so tapping a reaction silently did nothing.
+        // A non-premium account holds a single reaction, so clear whatever is currently chosen
+        // (best-effort) before adding, to keep the "set to exactly this reaction" semantics.
+        val chosen = send<TdApi.Message>(TdApi.GetMessage(chatId, messageId))
+            .interactionInfo?.reactions?.reactions
+            ?.filter { it.isChosen }
+            ?.map { it.type }
+            .orEmpty()
+        for (type in chosen) {
+            // Keep the one we're about to (re)add; drop the rest.
+            if (emoji != null && (type as? TdApi.ReactionTypeEmoji)?.emoji == emoji) continue
+            runCatching { send<TdApi.Ok>(TdApi.RemoveMessageReaction(chatId, messageId, type)) }
+        }
+        if (emoji != null && chosen.none { (it as? TdApi.ReactionTypeEmoji)?.emoji == emoji }) {
+            send<TdApi.Ok>(
+                TdApi.AddMessageReaction(
+                    chatId,
+                    messageId,
+                    TdApi.ReactionTypeEmoji(emoji),
+                    false, // isBig
+                    true, // updateRecentReactions
+                ),
+            )
+        }
     }
 
     private suspend fun senderName(sender: TdApi.MessageSender): String = when (sender) {
