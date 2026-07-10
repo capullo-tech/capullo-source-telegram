@@ -297,6 +297,7 @@ class TdLibTelegramClient(
             is TdApi.ChatTypeSupergroup -> if (t.isChannel) ChatType.CHANNEL else ChatType.SUPERGROUP
             else -> ChatType.OTHER
         },
+        photo = photo?.minithumbnail?.data,
     )
 
     private fun TdApi.Message.toTelegramMessage(): TelegramMessage? {

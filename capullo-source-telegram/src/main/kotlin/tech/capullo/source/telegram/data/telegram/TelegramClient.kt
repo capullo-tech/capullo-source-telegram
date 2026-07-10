@@ -70,6 +70,10 @@ data class TelegramChat(
     val id: Long,
     val title: String,
     val type: ChatType,
+    // Chat avatar as inline minithumbnail JPEG bytes (TDLib ChatPhotoInfo.minithumbnail) - a tiny
+    // blurred preview that ships with the chat, so no DownloadFile round-trip is needed for a small
+    // leading thumbnail. Null when the chat has no photo.
+    val photo: ByteArray? = null,
 )
 
 data class TelegramMessage(
