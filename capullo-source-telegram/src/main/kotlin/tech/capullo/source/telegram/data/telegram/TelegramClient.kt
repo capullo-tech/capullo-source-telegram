@@ -32,6 +32,10 @@ interface TelegramClient {
     // Documents whose mime/extension is audio (files sent "as file")
     suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage
     suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit = {}): String
+    // Downloads a chat avatar by its file id (TelegramChat.photoFileId) and returns the local file
+    // path, or null if it could not be materialized. A chat-photo file ref is stable, so unlike
+    // downloadFile there is no GetMessage re-fetch. Use for the crisp avatar over the minithumbnail.
+    suspend fun downloadChatPhoto(fileId: Int): String?
     fun close()
 }
 
@@ -74,6 +78,10 @@ data class TelegramChat(
     // blurred preview that ships with the chat, so no DownloadFile round-trip is needed for a small
     // leading thumbnail. Null when the chat has no photo.
     val photo: ByteArray? = null,
+    // File id of the full-resolution "small" chat avatar (TDLib ChatPhotoInfo.small). Pass to
+    // [TelegramClient.downloadChatPhoto] to fetch a crisp ~160px avatar; use [photo] as the instant
+    // placeholder while it downloads. Null when the chat has no photo.
+    val photoFileId: Int? = null,
 )
 
 data class TelegramMessage(

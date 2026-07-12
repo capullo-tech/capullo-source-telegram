@@ -61,6 +61,7 @@ private object NoopTelegramClient : TelegramClient {
         HistoryPage(emptyList(), 0)
     override suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit): String =
         error("harness never downloads")
+    override suspend fun downloadChatPhoto(fileId: Int): String? = null
     override fun close() {}
 }
 

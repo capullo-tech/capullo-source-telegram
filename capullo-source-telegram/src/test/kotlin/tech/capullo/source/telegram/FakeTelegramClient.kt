@@ -65,6 +65,7 @@ class FakeTelegramClient(
         HistoryPage(emptyList(), 0)
     override suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage =
         HistoryPage(emptyList(), 0)
+    override suspend fun downloadChatPhoto(fileId: Int): String? = null
     override fun close() {}
 }
 

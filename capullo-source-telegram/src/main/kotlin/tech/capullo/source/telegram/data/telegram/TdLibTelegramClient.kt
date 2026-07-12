@@ -208,6 +208,14 @@ class TdLibTelegramClient(
         }
     }
 
+    override suspend fun downloadChatPhoto(fileId: Int): String? =
+        runCatching {
+            // Synchronous DownloadFile completes when the file is on disk (no progress reporting
+            // needed for a tiny avatar). A chat-photo file ref is stable, so no GetMessage re-fetch.
+            send<TdApi.File>(TdApi.DownloadFile(fileId, 1, 0, 0, true))
+                .local.path.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+
     override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo {
         val message = send<TdApi.Message>(TdApi.GetMessage(chatId, messageId))
         val reactions = message.interactionInfo?.reactions
@@ -320,6 +328,7 @@ class TdLibTelegramClient(
             else -> ChatType.OTHER
         },
         photo = photo?.minithumbnail?.data,
+        photoFileId = photo?.small?.id,
     )
 
     private fun TdApi.Message.toTelegramMessage(): TelegramMessage? {
