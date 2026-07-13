@@ -1,0 +1,15 @@
+# capullo-source-telegram LOCAL pins catalog (`pins.*`) - the SPI coordinate + the L0 TDLib
+# prebuilt, pinned independently per release. Everything shared
+# (toolchain, Room, coroutines, core-ktx, test) comes from the shared `libs` catalog.
+[versions]
+# Contracts (Layer 1): jitpack coordinate; composite build substitutes the sibling when present.
+contracts = "main-SNAPSHOT"
+# TDLib (Layer 0): the TGX-Android prebuilt (libtdjni.so + org.drinkless.tdlib API) mirrored as a
+# jitpack AAR by lib-tdlib-android. Pinned to an immutable commit.
+libTdlibAndroid = "24a82a1"
+
+[libraries]
+# The integrator SPI (Layer 1). jitpack coordinate; composite build substitutes it locally.
+capullo-audio-contracts = { module = "com.github.capullo-tech:capullo-audio-contracts", version.ref = "contracts" }
+# TDLib prebuilt (Layer 0), replaces the old script-populated :tdlib module.
+lib-tdlib-android = { module = "com.github.capullo-tech:lib-tdlib-android", version.ref = "libTdlibAndroid" }

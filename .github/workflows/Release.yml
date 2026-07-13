@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # e.g. v1.0.0 - cut a library release
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes
+      # Consumed as a jitpack coordinate (builds a tag on first request). Warm it so consumers
+      # re-pinning don't eat the first-build latency. Best-effort - never fails the release.
+      - name: Warm jitpack build for the tag (best-effort)
+        run: |
+          tag="${{ github.ref_name }}"
+          curl -sSf --max-time 300 \
+            "https://jitpack.io/com/github/capullo-tech/capullo-source-telegram/${tag}/capullo-source-telegram-${tag}.pom" \
+            -o /dev/null \
+            || echo "jitpack warm did not complete; jitpack still builds on the first consumer request."

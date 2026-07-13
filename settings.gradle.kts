@@ -16,8 +16,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // capullo-audio-contracts (published on jitpack).
+        // capullo-audio-contracts + lib-tdlib-android + build-conventions catalog (all jitpack).
         maven { url = uri("https://jitpack.io") }
+    }
+    versionCatalogs {
+        // Shared org toolchain, pinned by commit from jitpack.
+        create("libs") { from("com.github.capullo-tech:build-conventions:b07e979") }
+        // Local pins: the SPI coordinate + the L0 TDLib prebuilt, pinned independently per release.
+        create("pins") { from(files("gradle/pins.versions.toml")) }
     }
 }
 

@@ -46,11 +46,11 @@ android {
 dependencies {
     // Layer 1 SPI - `api` because the public surface implements/returns its types
     // (MediaSourceProvider, NowPlaying via NowPlayingSource, PlaybackQueue).
-    api(libs.capullo.audio.contracts)
+    api(pins.capullo.audio.contracts)
 
     // TDLib Java API + prebuilt native libs, via the lib-tdlib-android jitpack AAR (Layer 0).
     // `api` so consumers get org.drinkless.tdlib.* + libtdjni.so transitively.
-    api(libs.lib.tdlib.android)
+    api(pins.lib.tdlib.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
