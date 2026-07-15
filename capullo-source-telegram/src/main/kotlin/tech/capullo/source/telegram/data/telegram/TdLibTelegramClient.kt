@@ -2,21 +2,32 @@ package tech.capullo.source.telegram.data.telegram
 
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import org.drinkless.tdlib.Client
 import org.drinkless.tdlib.TdApi
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -32,6 +43,13 @@ class TdLibTelegramClient(
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unknown)
     override val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    // TDLib network connection state (true == ConnectionStateReady). Downloads gate on this: right
+    // after a FRESH login TDLib reaches AuthorizationStateReady while its file-download subsystem is
+    // still settling (ConnectionStateUpdating - the post-login sync). A synchronous DownloadFile
+    // issued in that window makes zero progress and the timeout-less send() hangs forever (the
+    // player sits in BUFFERING; only an app restart clears it). awaitConnected() waits past that.
+    private val _connected = MutableStateFlow(false)
 
     private val _newAudioMessages = MutableSharedFlow<TelegramMessage>(extraBufferCapacity = 16)
     override val newAudioMessages: SharedFlow<TelegramMessage> = _newAudioMessages.asSharedFlow()
@@ -98,6 +116,12 @@ class TdLibTelegramClient(
                 Log.d("TeleCloud", "UpdateDeleteMessages chat=${update.chatId} ids=${update.messageIds.size}")
                 _deletedMessages.tryEmit(update.chatId to update.messageIds.toList())
             }
+            return
+        }
+        if (update is TdApi.UpdateConnectionState) {
+            val ready = update.state is TdApi.ConnectionStateReady
+            _connected.value = ready
+            Log.d("TeleCloud", "UpdateConnectionState ready=$ready (${update.state::class.simpleName})")
             return
         }
         if (update is TdApi.UpdateFile) {
@@ -192,6 +216,9 @@ class TdLibTelegramClient(
     }
 
     override suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit): String {
+        // Don't issue a download until TDLib is actually connected - see [_connected]. Bounded so the
+        // UI can never spin forever waiting to connect.
+        awaitConnected()
         // Re-fetch the message to get a fresh file reference (Telegram refs can expire).
         val message = send<TdApi.Message>(TdApi.GetMessage(chatId, messageId))
         val fileId = when (val c = message.content) {
@@ -199,22 +226,78 @@ class TdLibTelegramClient(
             is TdApi.MessageDocument -> c.document.document.id
             else -> throw TelegramException(0, "Message $messageId is not audio")
         }
-        progressCallbacks[fileId] = onProgress
-        try {
-            val file = send<TdApi.File>(TdApi.DownloadFile(fileId, 1, 0, 0, true))
-            return file.local.path
-        } finally {
-            progressCallbacks.remove(fileId)
-        }
+        return downloadWithStallGuard(fileId, onProgress)
     }
 
     override suspend fun downloadChatPhoto(fileId: Int): String? =
         runCatching {
             // Synchronous DownloadFile completes when the file is on disk (no progress reporting
             // needed for a tiny avatar). A chat-photo file ref is stable, so no GetMessage re-fetch.
-            send<TdApi.File>(TdApi.DownloadFile(fileId, 1, 0, 0, true))
-                .local.path.takeIf { it.isNotEmpty() }
+            // Same connection gate + stall guard as downloadFile so a first-run avatar fetch can't
+            // leak a coroutine stuck forever in the timeout-less send().
+            awaitConnected()
+            downloadWithStallGuard(fileId) {}.takeIf { it.isNotEmpty() }
         }.getOrNull()
+
+    // Waits for TDLib to reach ConnectionStateReady before returning, up to [AWAIT_CONNECTED_TIMEOUT_MS].
+    // On timeout it proceeds anyway (logging a warning) - the download stall guard is the real backstop,
+    // and connection state can legitimately flap; we never want to block a download forever on it.
+    private suspend fun awaitConnected() {
+        if (_connected.value) return
+        val connected = withTimeoutOrNull(AWAIT_CONNECTED_TIMEOUT_MS) { _connected.first { it } }
+        if (connected == null) {
+            Log.w("TeleCloud", "awaitConnected timed out after ${AWAIT_CONNECTED_TIMEOUT_MS}ms; proceeding (stall guard backstops)")
+        }
+    }
+
+    // Runs a synchronous DownloadFile with a *stall* watchdog: the synchronous send() only resumes
+    // once the whole file is on disk, so a never-progressing download would suspend forever. We reset
+    // a timer on every UpdateFile progress tick and abort with a TelegramException if no progress
+    // arrives for [DOWNLOAD_STALL_TIMEOUT_MS] - turning the infinite BUFFERING hang into a surfaced
+    // error the UI can recover from. This is a no-progress timeout, NOT a total-time budget, so a
+    // legitimately slow large download on a poor connection is never falsely killed.
+    private suspend fun downloadWithStallGuard(fileId: Int, onProgress: (Float) -> Unit): String {
+        val lastProgressAt = AtomicLong(SystemClock.elapsedRealtime())
+        // Reset the stall clock only on FORWARD progress - during the first-run hang TDLib can keep
+        // emitting zero-progress UpdateFile events, which would otherwise perpetually feed the clock.
+        val lastFraction = AtomicReference(0f)
+        progressCallbacks[fileId] = { fraction ->
+            if (fraction > lastFraction.get()) {
+                lastFraction.set(fraction)
+                lastProgressAt.set(SystemClock.elapsedRealtime())
+            }
+            onProgress(fraction)
+        }
+        try {
+            return coroutineScope {
+                val download = async {
+                    send<TdApi.File>(TdApi.DownloadFile(fileId, 1, 0, 0, true)).local.path
+                }
+                val watchdog = launch {
+                    while (isActive) {
+                        delay(STALL_POLL_MS)
+                        if (SystemClock.elapsedRealtime() - lastProgressAt.get() > DOWNLOAD_STALL_TIMEOUT_MS) {
+                            Log.w("TeleCloud", "download of file $fileId stalled (no progress for ${DOWNLOAD_STALL_TIMEOUT_MS}ms); aborting")
+                            download.cancel()
+                            break
+                        }
+                    }
+                }
+                try {
+                    download.await()
+                } catch (e: CancellationException) {
+                    // Rethrows if the *caller* cancelled us (e.g. playback abandoned); otherwise this
+                    // is our watchdog firing, which we surface as a real error instead of a hang.
+                    coroutineContext.ensureActive()
+                    throw TelegramException(0, "Download of file $fileId stalled")
+                } finally {
+                    watchdog.cancel()
+                }
+            }
+        } finally {
+            progressCallbacks.remove(fileId)
+        }
+    }
 
     override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo {
         val message = send<TdApi.Message>(TdApi.GetMessage(chatId, messageId))
@@ -318,6 +401,16 @@ class TdLibTelegramClient(
                 }
             }
         }
+
+    private companion object {
+        // Max wait for ConnectionStateReady before a download proceeds anyway (see awaitConnected).
+        const val AWAIT_CONNECTED_TIMEOUT_MS = 20_000L
+        // A download reporting no progress for this long is treated as stalled and aborted. Generous
+        // so a slow-to-start-but-healthy download (first UpdateFile can lag) isn't falsely killed.
+        const val DOWNLOAD_STALL_TIMEOUT_MS = 20_000L
+        // How often the stall watchdog checks the no-progress clock.
+        const val STALL_POLL_MS = 2_000L
+    }
 
     private fun TdApi.Chat.toTelegramChat() = TelegramChat(
         id = id,
