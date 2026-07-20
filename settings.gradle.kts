@@ -21,15 +21,15 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         // Shared org toolchain, pinned by commit from jitpack.
-        create("libs") { from("com.github.capullo-tech:build-conventions:b07e979") }
-        // Local pins: the SPI coordinate + the L0 TDLib prebuilt, pinned independently per release.
+        create("libs") { from("com.github.capullo-tech:build-conventions:a8439c66c46c7228e2be5fdc92e1a10e2fc693c0") }
+        // Local pins: the SPI coordinate + the TDLib prebuilt, pinned independently per release.
         create("pins") { from(files("gradle/pins.versions.toml")) }
     }
 }
 
 rootProject.name = "capullo-source-telegram"
 include(":capullo-source-telegram")
-// TDLib (Java API + prebuilt .so) now comes from the lib-tdlib-android jitpack AAR (Layer 0), so
+// TDLib (Java API + prebuilt .so) now comes from the lib-tdlib-android jitpack AAR, so
 // there is no local :tdlib module / setup_tdlib.sh / git-lfs anymore.
 include(":app") // harness/demo app: exercises TelegramSource against the SPI.
 
