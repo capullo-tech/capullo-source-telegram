@@ -1,8 +1,11 @@
 # capullo-source-telegram
 
-Telegram/TDLib **media source** for the [Capullo Audio Platform](https://github.com/capullo-tech) -
-Layer 3 (the integrator). It treats a Telegram group/channel as a music library and implements the
+Telegram/TDLib **media source** for the [Capullo Audio Platform](https://github.com/capullo-tech).
+It treats a Telegram group/channel as a music library and implements the
 `capullo-audio-contracts` SPI so the shared `capullo-audio` delivery engine can play and broadcast it.
+
+This library does not depend on the engine, nor the engine on it - they are siblings meeting at the
+SPI. See [Platform shape](https://github.com/capullo-tech/capullo-audio-contracts#platform-shape).
 
 It is the platform's **contract-stability anchor**: unlike `capullo-source-radiobrowser`
 (instant stream URL), here `mediaRequestFor(id)` **suspends on a real TDLib download** before
@@ -18,10 +21,10 @@ validation radiobrowser only had at the type level.
 | `:app` | Minimal harness proving the library links and assembles. |
 
 TDLib (the `org.drinkless.tdlib` Java API + prebuilt `libtdjni.so`) comes from the
-[`lib-tdlib-android`](https://github.com/capullo-tech/lib-tdlib-android) jitpack AAR (Layer 0) - a
+[`lib-tdlib-android`](https://github.com/capullo-tech/lib-tdlib-android) jitpack AAR - a
 normal dependency, no `setup_tdlib.sh` / git-lfs.
 
-## The contract seam
+## The source seam
 
 ```kotlin
 class TelegramSource(scope, downloadManager, metadataExtractor) :

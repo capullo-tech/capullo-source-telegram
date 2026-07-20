@@ -18,7 +18,7 @@ import tech.capullo.source.telegram.player.MetadataExtractor
 import java.io.File
 
 /**
- * The Telegram integrator - the *second* real implementation of the platform SPI
+ * The Telegram source - the *second* real implementation of the platform SPI
  * ([MediaSourceProvider] + [NowPlayingSource]), and the **contract stability anchor** (platform plan
  * ). Where `capullo-source-radiobrowser` exercised the seam only at the type level, this
  * one exercises the two behaviours the contract was designed for and radiobrowser never touched:
