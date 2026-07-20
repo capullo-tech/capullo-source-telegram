@@ -6,7 +6,7 @@
 contracts = "main-SNAPSHOT"
 # TDLib: the TGX-Android prebuilt (libtdjni.so + org.drinkless.tdlib API) mirrored as a
 # jitpack AAR by lib-tdlib-android. Pinned to an immutable commit.
-libTdlibAndroid = "e4dbf69d31a3ffe52b1461c5c6cacffdff97dad3"
+libTdlibAndroid = "6c9a916bed31d688066631beb788f76ac211c6ae"
 
 [libraries]
 # The integrator SPI. jitpack coordinate; composite build substitutes it locally.
