@@ -10,8 +10,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // 24 to match the :tdlib prebuilt floor; stays ≤ the consuming app (telecloud is 24).
-        minSdk = 24
+        // 23: no API-24 calls in this module; matches the org floor + the consuming app (23).
+        minSdk = 23
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
