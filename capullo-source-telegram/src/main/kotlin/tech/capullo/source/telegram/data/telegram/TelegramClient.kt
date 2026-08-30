@@ -36,6 +36,9 @@ interface TelegramClient {
     // path, or null if it could not be materialized. A chat-photo file ref is stable, so unlike
     // downloadFile there is no GetMessage re-fetch. Use for the crisp avatar over the minithumbnail.
     suspend fun downloadChatPhoto(fileId: Int): String?
+    // Posts a plain-text message to a chat as the logged-in user. Posting rights are enforced
+    // server-side (e.g. channels need admin); failures surface as a TelegramException.
+    suspend fun sendMessage(chatId: Long, text: String)
     fun close()
 }
 

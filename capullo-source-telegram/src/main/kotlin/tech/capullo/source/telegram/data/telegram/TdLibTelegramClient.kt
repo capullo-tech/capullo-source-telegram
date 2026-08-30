@@ -386,6 +386,19 @@ class TdLibTelegramClient(
         return username
     }
 
+    override suspend fun sendMessage(chatId: Long, text: String) {
+        send<TdApi.Message>(
+            TdApi.SendMessage(
+                chatId,
+                null, // topicId
+                null, // replyTo
+                null, // options
+                null, // replyMarkup
+                TdApi.InputMessageText(TdApi.FormattedText(text, null), null, true),
+            ),
+        )
+    }
+
     override fun close() {
         client.send(TdApi.Close()) {}
     }
