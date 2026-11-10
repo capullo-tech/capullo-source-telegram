@@ -134,14 +134,18 @@ class TdLibTelegramClient(
             return
         }
         if (update !is TdApi.UpdateAuthorizationState) return
-        _authState.value = when (update.authorizationState) {
+        _authState.value = when (val state = update.authorizationState) {
             is TdApi.AuthorizationStateWaitTdlibParameters -> {
                 // Auto-setup if credentials are already saved (subsequent launches)
                 if (credentials.hasCredentials()) setupParameters()
                 AuthState.WaitParameters
             }
             is TdApi.AuthorizationStateWaitPhoneNumber -> AuthState.WaitPhone
-            is TdApi.AuthorizationStateWaitCode -> AuthState.WaitCode
+            is TdApi.AuthorizationStateWaitCode -> AuthState.WaitCode(
+                phoneNumber = state.codeInfo.phoneNumber,
+                resendAfterSeconds = state.codeInfo.timeout.takeIf { state.codeInfo.nextType != null },
+                sentAtElapsedMs = SystemClock.elapsedRealtime(),
+            )
             is TdApi.AuthorizationStateWaitPassword -> AuthState.WaitPassword
             is TdApi.AuthorizationStateReady -> AuthState.Ready
             is TdApi.AuthorizationStateClosed -> AuthState.Unknown
@@ -155,6 +159,10 @@ class TdLibTelegramClient(
 
     override suspend fun checkCode(code: String) {
         send<TdApi.Ok>(TdApi.CheckAuthenticationCode(code))
+    }
+
+    override suspend fun resendCode() {
+        send<TdApi.Ok>(TdApi.ResendAuthenticationCode(TdApi.ResendCodeReasonUserRequest()))
     }
 
     override suspend fun checkPassword(password: String) {

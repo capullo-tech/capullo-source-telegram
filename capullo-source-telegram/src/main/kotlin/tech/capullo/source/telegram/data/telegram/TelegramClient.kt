@@ -21,6 +21,8 @@ interface TelegramClient {
     fun setupParameters()
     suspend fun setPhoneNumber(phone: String)
     suspend fun checkCode(code: String)
+    // Sends the login code again; valid in WaitCode once its resendAfterSeconds have passed.
+    suspend fun resendCode()
     suspend fun checkPassword(password: String)
     suspend fun getChats(limit: Int): List<TelegramChat>
     suspend fun getMessageReactions(chatId: Long, messageId: Long): String?
@@ -67,7 +69,14 @@ sealed class AuthState {
     data object Unknown : AuthState()
     data object WaitParameters : AuthState()
     data object WaitPhone : AuthState()
-    data object WaitCode : AuthState()
+    // phoneNumber: where the code went. resendAfterSeconds: Telegram's wait before resendCode()
+    // may be used, counted from sentAtElapsedMs (SystemClock.elapsedRealtime); null when no other
+    // delivery method is left. sentAtElapsedMs also makes each (re)sent code a distinct state.
+    data class WaitCode(
+        val phoneNumber: String,
+        val resendAfterSeconds: Int?,
+        val sentAtElapsedMs: Long,
+    ) : AuthState()
     data object WaitPassword : AuthState()
     data object Ready : AuthState()
     data class Error(val message: String) : AuthState()

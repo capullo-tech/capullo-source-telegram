@@ -55,6 +55,7 @@ class FakeTelegramClient(
     override fun setupParameters() {}
     override suspend fun setPhoneNumber(phone: String) {}
     override suspend fun checkCode(code: String) {}
+    override suspend fun resendCode() {}
     override suspend fun checkPassword(password: String) {}
     override suspend fun getChats(limit: Int): List<TelegramChat> = emptyList()
     override suspend fun getMessageReactions(chatId: Long, messageId: Long): String? = null

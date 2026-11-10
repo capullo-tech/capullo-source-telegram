@@ -82,6 +82,7 @@ class TelegramRepository(
     fun setupParameters() = client.setupParameters()
     suspend fun setPhoneNumber(phone: String) = client.setPhoneNumber(phone)
     suspend fun checkCode(code: String) = client.checkCode(code)
+    suspend fun resendCode() = client.resendCode()
     suspend fun checkPassword(password: String) = client.checkPassword(password)
 
     suspend fun getAudioGroups(limit: Int): List<TelegramChat> =
