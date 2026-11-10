@@ -49,7 +49,7 @@ class TdLibTelegramClient(
     // still settling (ConnectionStateUpdating - the post-login sync). A synchronous DownloadFile
     // issued in that window makes zero progress and the timeout-less send() hangs forever (the
     // player sits in BUFFERING; only an app restart clears it). awaitConnected() waits past that.
-    private val _connected = MutableStateFlow(false)
+    private val connectedState = MutableStateFlow(false)
 
     private val _newAudioMessages = MutableSharedFlow<TelegramMessage>(extraBufferCapacity = 16)
     override val newAudioMessages: SharedFlow<TelegramMessage> = _newAudioMessages.asSharedFlow()
@@ -67,7 +67,7 @@ class TdLibTelegramClient(
 
     // senderId → username ("@name") or null when the user has none; avoids repeated GetUser calls
     private val usernameCache = ConcurrentHashMap<Long, String>()
-    private val NO_USERNAME = ""
+    private val noUsername = ""
 
     private val audioExtensions = setOf(
         "mp3", "m4a", "flac", "ogg", "opus", "wav", "aac", "wma", "aiff", "aif", "alac", "ape",
@@ -120,7 +120,7 @@ class TdLibTelegramClient(
         }
         if (update is TdApi.UpdateConnectionState) {
             val ready = update.state is TdApi.ConnectionStateReady
-            _connected.value = ready
+            connectedState.value = ready
             Log.d("TeleCloud", "UpdateConnectionState ready=$ready (${update.state::class.simpleName})")
             return
         }
@@ -169,9 +169,8 @@ class TdLibTelegramClient(
         send<TdApi.Ok>(TdApi.CheckAuthenticationPassword(password))
     }
 
-    override suspend fun getMessageReactions(chatId: Long, messageId: Long): String? =
-        runCatching { send<TdApi.Message>(TdApi.GetMessage(chatId, messageId)).extractReactions() }
-            .getOrNull()
+    override suspend fun getMessageReactions(chatId: Long, messageId: Long): String? = runCatching { send<TdApi.Message>(TdApi.GetMessage(chatId, messageId)).extractReactions() }
+        .getOrNull()
 
     override suspend fun getChats(limit: Int): List<TelegramChat> {
         val chats = send<TdApi.Chats>(TdApi.GetChats(TdApi.ChatListMain(), limit))
@@ -224,7 +223,7 @@ class TdLibTelegramClient(
     }
 
     override suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit): String {
-        // Don't issue a download until TDLib is actually connected - see [_connected]. Bounded so the
+        // Don't issue a download until TDLib is actually connected - see [connectedState]. Bounded so the
         // UI can never spin forever waiting to connect.
         awaitConnected()
         // Re-fetch the message to get a fresh file reference (Telegram refs can expire).
@@ -237,22 +236,21 @@ class TdLibTelegramClient(
         return downloadWithStallGuard(fileId, onProgress)
     }
 
-    override suspend fun downloadChatPhoto(fileId: Int): String? =
-        runCatching {
-            // Synchronous DownloadFile completes when the file is on disk (no progress reporting
-            // needed for a tiny avatar). A chat-photo file ref is stable, so no GetMessage re-fetch.
-            // Same connection gate + stall guard as downloadFile so a first-run avatar fetch can't
-            // leak a coroutine stuck forever in the timeout-less send().
-            awaitConnected()
-            downloadWithStallGuard(fileId) {}.takeIf { it.isNotEmpty() }
-        }.getOrNull()
+    override suspend fun downloadChatPhoto(fileId: Int): String? = runCatching {
+        // Synchronous DownloadFile completes when the file is on disk (no progress reporting
+        // needed for a tiny avatar). A chat-photo file ref is stable, so no GetMessage re-fetch.
+        // Same connection gate + stall guard as downloadFile so a first-run avatar fetch can't
+        // leak a coroutine stuck forever in the timeout-less send().
+        awaitConnected()
+        downloadWithStallGuard(fileId) {}.takeIf { it.isNotEmpty() }
+    }.getOrNull()
 
     // Waits for TDLib to reach ConnectionStateReady before returning, up to [AWAIT_CONNECTED_TIMEOUT_MS].
     // On timeout it proceeds anyway (logging a warning) - the download stall guard is the real backstop,
     // and connection state can legitimately flap; we never want to block a download forever on it.
     private suspend fun awaitConnected() {
-        if (_connected.value) return
-        val connected = withTimeoutOrNull(AWAIT_CONNECTED_TIMEOUT_MS) { _connected.first { it } }
+        if (connectedState.value) return
+        val connected = withTimeoutOrNull(AWAIT_CONNECTED_TIMEOUT_MS) { connectedState.first { it } }
         if (connected == null) {
             Log.w("TeleCloud", "awaitConnected timed out after ${AWAIT_CONNECTED_TIMEOUT_MS}ms; proceeding (stall guard backstops)")
         }
@@ -333,7 +331,9 @@ class TdLibTelegramClient(
                     ReactorEntry(emoji, senderName(added.senderId), added.isOutgoing)
                 }
             }.getOrDefault(emptyList())
-        } else emptyList()
+        } else {
+            emptyList()
+        }
 
         return MessageReactionsInfo(
             summary = summary,
@@ -386,11 +386,11 @@ class TdLibTelegramClient(
     }
 
     private suspend fun resolveUsername(userId: Long): String? {
-        usernameCache[userId]?.let { return it.takeIf { u -> u != NO_USERNAME } }
+        usernameCache[userId]?.let { return it.takeIf { u -> u != noUsername } }
         val username = runCatching {
             send<TdApi.User>(TdApi.GetUser(userId)).usernames?.activeUsernames?.firstOrNull()
         }.getOrNull()
-        usernameCache[userId] = username ?: NO_USERNAME
+        usernameCache[userId] = username ?: noUsername
         return username
     }
 
@@ -412,23 +412,24 @@ class TdLibTelegramClient(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private suspend fun <T : TdApi.Object> send(function: TdApi.Function<out TdApi.Object>): T =
-        suspendCancellableCoroutine { cont ->
-            client.send(function) { result ->
-                if (result is TdApi.Error) {
-                    cont.resumeWithException(TelegramException(result.code, result.message))
-                } else {
-                    cont.resume(result as T)
-                }
+    private suspend fun <T : TdApi.Object> send(function: TdApi.Function<out TdApi.Object>): T = suspendCancellableCoroutine { cont ->
+        client.send(function) { result ->
+            if (result is TdApi.Error) {
+                cont.resumeWithException(TelegramException(result.code, result.message))
+            } else {
+                cont.resume(result as T)
             }
         }
+    }
 
     private companion object {
         // Max wait for ConnectionStateReady before a download proceeds anyway (see awaitConnected).
         const val AWAIT_CONNECTED_TIMEOUT_MS = 20_000L
+
         // A download reporting no progress for this long is treated as stalled and aborted. Generous
         // so a slow-to-start-but-healthy download (first UpdateFile can lag) isn't falsely killed.
         const val DOWNLOAD_STALL_TIMEOUT_MS = 20_000L
+
         // How often the stall watchdog checks the no-progress clock.
         const val STALL_POLL_MS = 2_000L
     }

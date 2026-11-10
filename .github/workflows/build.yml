@@ -32,6 +32,9 @@ jobs:
           distribution: 'temurin'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Check spotless
+        working-directory: capullo-source-telegram
+        run: ./gradlew spotlessCheck --no-daemon
       # TDLib (Java API + prebuilt .so) resolves from the lib-tdlib-android jitpack AAR - no
       # setup_tdlib.sh / git-lfs step anymore.
       # Contract-validation driver: the fake-driven JVM unit test that actually exercises

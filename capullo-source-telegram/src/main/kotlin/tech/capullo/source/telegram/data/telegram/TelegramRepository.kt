@@ -85,8 +85,7 @@ class TelegramRepository(
     suspend fun resendCode() = client.resendCode()
     suspend fun checkPassword(password: String) = client.checkPassword(password)
 
-    suspend fun getAudioGroups(limit: Int): List<TelegramChat> =
-        client.getChats(limit).filter { it.type != ChatType.OTHER }
+    suspend fun getAudioGroups(limit: Int): List<TelegramChat> = client.getChats(limit).filter { it.type != ChatType.OTHER }
 
     suspend fun syncAudioMessages(chat: TelegramChat): Int {
         val latestStored = dao.getLatestMessageId(chat.id) ?: 0L
@@ -129,8 +128,7 @@ class TelegramRepository(
 
     suspend fun getTrackCount(chatId: Long) = dao.getTrackCount(chatId)
     suspend fun getTotalSize(chatId: Long) = dao.getTotalSize(chatId) ?: 0L
-    suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit = {}) =
-        client.downloadFile(chatId, messageId, onProgress)
+    suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit = {}) = client.downloadFile(chatId, messageId, onProgress)
 
     suspend fun refreshReactions(chatId: Long, messageId: Long): String? {
         val reactions = client.getMessageReactions(chatId, messageId)
@@ -138,8 +136,7 @@ class TelegramRepository(
         return reactions
     }
 
-    suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo =
-        client.getReactionsInfo(chatId, messageId)
+    suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo = client.getReactionsInfo(chatId, messageId)
 
     suspend fun setOwnReaction(chatId: Long, messageId: Long, emoji: String?): MessageReactionsInfo {
         client.setOwnReaction(chatId, messageId, emoji)

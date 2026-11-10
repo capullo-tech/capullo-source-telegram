@@ -21,23 +21,29 @@ interface TelegramClient {
     fun setupParameters()
     suspend fun setPhoneNumber(phone: String)
     suspend fun checkCode(code: String)
+
     // Sends the login code again; valid in WaitCode once its resendAfterSeconds have passed.
     suspend fun resendCode()
     suspend fun checkPassword(password: String)
     suspend fun getChats(limit: Int): List<TelegramChat>
     suspend fun getMessageReactions(chatId: Long, messageId: Long): String?
     suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo
+
     // emoji = null clears the current user's reaction
     suspend fun setOwnReaction(chatId: Long, messageId: Long, emoji: String?)
+
     // Audio (music) messages
     suspend fun getChatHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage
+
     // Documents whose mime/extension is audio (files sent "as file")
     suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage
     suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit = {}): String
+
     // Downloads a chat avatar by its file id (TelegramChat.photoFileId) and returns the local file
     // path, or null if it could not be materialized. A chat-photo file ref is stable, so unlike
     // downloadFile there is no GetMessage re-fetch. Use for the crisp avatar over the minithumbnail.
     suspend fun downloadChatPhoto(fileId: Int): String?
+
     // Posts a plain-text message to a chat as the logged-in user. Posting rights are enforced
     // server-side (e.g. channels need admin); failures surface as a TelegramException.
     suspend fun sendMessage(chatId: Long, text: String)
@@ -58,17 +64,18 @@ data class ReactorEntry(
 )
 
 data class MessageReactionsInfo(
-    val summary: String?,          // concatenated emoji, same format as MediaMessageEntity.reactions
-    val ownEmoji: String?,         // reaction chosen by the current user, if any
-    val canListReactors: Boolean,  // false in channels (anonymous reactions)
+    val summary: String?, // concatenated emoji, same format as MediaMessageEntity.reactions
+    val ownEmoji: String?, // reaction chosen by the current user, if any
+    val canListReactors: Boolean, // false in channels (anonymous reactions)
     val reactors: List<ReactorEntry>,
-    val available: List<String>,   // emoji the current user may react with
+    val available: List<String>, // emoji the current user may react with
 )
 
 sealed class AuthState {
     data object Unknown : AuthState()
     data object WaitParameters : AuthState()
     data object WaitPhone : AuthState()
+
     // phoneNumber: where the code went. resendAfterSeconds: Telegram's wait before resendCode()
     // may be used, counted from sentAtElapsedMs (SystemClock.elapsedRealtime); null when no other
     // delivery method is left. sentAtElapsedMs also makes each (re)sent code a distinct state.
@@ -144,7 +151,6 @@ interface TelegramCredentials {
 
     companion object {
         /** Generate a fresh 256-bit local-DB encryption key. Store it in Keystore/EncryptedSharedPreferences. */
-        fun newDatabaseEncryptionKey(): ByteArray =
-            ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+        fun newDatabaseEncryptionKey(): ByteArray = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
     }
 }

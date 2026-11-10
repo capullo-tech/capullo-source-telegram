@@ -20,11 +20,10 @@ abstract class MediaMessageDatabase : RoomDatabase() {
 
     companion object {
         /** Convenience builder; the app may equally wire this through its own DI. */
-        fun create(context: Context): MediaMessageDatabase =
-            Room.databaseBuilder(
-                context.applicationContext,
-                MediaMessageDatabase::class.java,
-                "capullo_telegram.db",
-            ).build()
+        fun create(context: Context): MediaMessageDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            MediaMessageDatabase::class.java,
+            "capullo_telegram.db",
+        ).build()
     }
 }
