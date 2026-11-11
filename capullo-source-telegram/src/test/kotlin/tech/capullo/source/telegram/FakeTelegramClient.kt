@@ -59,13 +59,10 @@ class FakeTelegramClient(
     override suspend fun checkPassword(password: String) {}
     override suspend fun getChats(limit: Int): List<TelegramChat> = emptyList()
     override suspend fun getMessageReactions(chatId: Long, messageId: Long): String? = null
-    override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo =
-        MessageReactionsInfo(null, null, false, emptyList(), emptyList())
+    override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo = MessageReactionsInfo(null, null, false, emptyList(), emptyList())
     override suspend fun setOwnReaction(chatId: Long, messageId: Long, emoji: String?) {}
-    override suspend fun getChatHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage =
-        HistoryPage(emptyList(), 0)
-    override suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage =
-        HistoryPage(emptyList(), 0)
+    override suspend fun getChatHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage = HistoryPage(emptyList(), 0)
+    override suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage = HistoryPage(emptyList(), 0)
     override suspend fun downloadChatPhoto(fileId: Int): String? = null
     override suspend fun sendMessage(chatId: Long, text: String) {}
     override fun close() {}
@@ -75,7 +72,9 @@ class FakeTelegramClient(
 class FakeMediaMessageDao : MediaMessageDao {
     private val rows = LinkedHashMap<Long, MediaMessageEntity>()
 
-    fun seed(entities: List<MediaMessageEntity>) { entities.forEach { rows[it.messageId] = it } }
+    fun seed(entities: List<MediaMessageEntity>) {
+        entities.forEach { rows[it.messageId] = it }
+    }
 
     override suspend fun insertAll(messages: List<MediaMessageEntity>) {
         messages.forEach { rows.putIfAbsent(it.messageId, it) }
@@ -86,27 +85,25 @@ class FakeMediaMessageDao : MediaMessageDao {
     }
     override suspend fun exists(messageId: Long): Int = if (rows.containsKey(messageId)) 1 else 0
     override suspend fun getByIds(ids: List<Long>): List<MediaMessageEntity> = ids.mapNotNull { rows[it] }
-    override suspend fun deleteByIds(ids: List<Long>) { ids.forEach { rows.remove(it) } }
+    override suspend fun deleteByIds(ids: List<Long>) {
+        ids.forEach { rows.remove(it) }
+    }
     override suspend fun getAllLocalPaths(): List<String> = rows.values.mapNotNull { it.localPath }
-    override suspend fun getLocalPathsForChat(chatId: Long): List<String> =
-        rows.values.filter { it.chatId == chatId }.mapNotNull { it.localPath }
-    override suspend fun getMessageIdsForChat(chatId: Long): List<Long> =
-        rows.values.filter { it.chatId == chatId }.map { it.messageId }
-    override suspend fun deleteByChat(chatId: Long) { rows.values.filter { it.chatId == chatId }.forEach { rows.remove(it.messageId) } }
-    override suspend fun getPlaylist(chatId: Long): List<MediaMessageEntity> =
-        rows.values.filter { it.chatId == chatId && it.station != null }
-    override suspend fun getPlaylistNewestFirst(chatId: Long): List<MediaMessageEntity> =
-        getPlaylist(chatId).sortedByDescending { it.messageId }
-    override suspend fun getLocalTracks(chatId: Long): List<MediaMessageEntity> =
-        getPlaylist(chatId).filter { it.localPath != null }
-    override suspend fun getLatestMessageId(chatId: Long): Long? =
-        rows.values.filter { it.chatId == chatId }.maxOfOrNull { it.messageId }
-    override suspend fun getAnyForChat(chatId: Long): MediaMessageEntity? =
-        rows.values.firstOrNull { it.chatId == chatId && it.station != null }
+    override suspend fun getLocalPathsForChat(chatId: Long): List<String> = rows.values.filter { it.chatId == chatId }.mapNotNull { it.localPath }
+    override suspend fun getMessageIdsForChat(chatId: Long): List<Long> = rows.values.filter { it.chatId == chatId }.map { it.messageId }
+    override suspend fun deleteByChat(chatId: Long) {
+        rows.values.filter { it.chatId == chatId }.forEach { rows.remove(it.messageId) }
+    }
+    override suspend fun getPlaylist(chatId: Long): List<MediaMessageEntity> = rows.values.filter { it.chatId == chatId && it.station != null }
+    override suspend fun getPlaylistNewestFirst(chatId: Long): List<MediaMessageEntity> = getPlaylist(chatId).sortedByDescending { it.messageId }
+    override suspend fun getLocalTracks(chatId: Long): List<MediaMessageEntity> = getPlaylist(chatId).filter { it.localPath != null }
+    override suspend fun getLatestMessageId(chatId: Long): Long? = rows.values.filter { it.chatId == chatId }.maxOfOrNull { it.messageId }
+    override suspend fun getAnyForChat(chatId: Long): MediaMessageEntity? = rows.values.firstOrNull { it.chatId == chatId && it.station != null }
     override suspend fun getTrackCount(chatId: Long): Int = getPlaylist(chatId).size
     override suspend fun getTotalSize(chatId: Long): Long? = getPlaylist(chatId).sumOf { it.fileSize ?: 0 }
     override suspend fun updateReactions(messageId: Long, reactions: String?) {}
-    override suspend fun deleteAll() { rows.clear() }
-    override suspend fun getStations(): List<StationInfo> =
-        rows.values.filter { it.station != null }.map { StationInfo(it.chatId, it.station!!) }.distinct()
+    override suspend fun deleteAll() {
+        rows.clear()
+    }
+    override suspend fun getStations(): List<StationInfo> = rows.values.filter { it.station != null }.map { StationInfo(it.chatId, it.station!!) }.distinct()
 }

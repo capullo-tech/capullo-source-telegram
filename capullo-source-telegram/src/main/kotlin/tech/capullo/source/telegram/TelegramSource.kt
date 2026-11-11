@@ -2,11 +2,11 @@ package tech.capullo.source.telegram
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import tech.capullo.audio.contracts.MediaRequest
 import tech.capullo.audio.contracts.MediaSourceProvider
 import tech.capullo.audio.contracts.NowPlaying
@@ -49,7 +49,8 @@ public class TelegramSource(
     private val downloadManager: DownloadManager,
     private val metadataExtractor: MetadataExtractor,
     private val lookahead: Int = 2,
-) : MediaSourceProvider, NowPlayingSource {
+) : MediaSourceProvider,
+    NowPlayingSource {
 
     private val _nowPlaying = MutableStateFlow(NowPlaying.EMPTY)
     override val nowPlaying: StateFlow<NowPlaying> = _nowPlaying.asStateFlow()
@@ -58,6 +59,7 @@ public class TelegramSource(
     private var playlist: List<MediaMessageEntity> = emptyList()
     private var chatId: Long = 0
     private var chatTitle: String = ""
+
     @Volatile private var currentIndex: Int = 0
 
     private var prefetchJob: Job? = null
@@ -126,8 +128,7 @@ public class TelegramSource(
         return MediaRequest(uri = "file://" + File(path).toURI().rawPath)
     }
 
-    override fun queue(): PlaybackQueue =
-        TelegramPlaylistQueue(playlist.map { it.messageId.toString() }, currentIndex)
+    override fun queue(): PlaybackQueue = TelegramPlaylistQueue(playlist.map { it.messageId.toString() }, currentIndex)
 
     override fun onQueueAdvanced(currentIndex: Int) {
         this.currentIndex = currentIndex
@@ -155,7 +156,9 @@ public class TelegramSource(
 
     // --- helpers ---
 
-    private fun publishNowPlaying(np: NowPlaying) { _nowPlaying.value = np }
+    private fun publishNowPlaying(np: NowPlaying) {
+        _nowPlaying.value = np
+    }
 
     private fun baseNowPlaying(track: MediaMessageEntity, index: Int): NowPlaying = NowPlaying(
         title = track.title ?: track.fileName ?: UNKNOWN_TITLE,
@@ -180,5 +183,4 @@ public class TelegramSource(
 }
 
 /** Thrown by [TelegramSource.mediaRequestFor] when a track can't be resolved (deleted / offline). */
-public class UnresolvableTrackException(public val messageId: Long) :
-    Exception("Could not resolve telegram track $messageId (deleted or unavailable)")
+public class UnresolvableTrackException(public val messageId: Long) : Exception("Could not resolve telegram track $messageId (deleted or unavailable)")

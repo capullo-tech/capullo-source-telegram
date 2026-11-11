@@ -40,8 +40,13 @@ class TelegramSourceContractTest {
     private val id3 = TrackMetadata(title = "ID3 Title", artist = "ID3 Artist", artworkBase64 = "QVJU")
     private val metadataExtractor = MetadataExtractor { id3 }
 
-    @Before fun setUp() { tmp = createTempDir("tg-src-test") }
-    @After fun tearDown() { tmp.deleteRecursively() }
+    @Before fun setUp() {
+        tmp = createTempDir("tg-src-test")
+    }
+
+    @After fun tearDown() {
+        tmp.deleteRecursively()
+    }
 
     private fun track(id: Long) = MediaMessageEntity(
         messageId = id, chatId = chatId, date = "0", senderId = null, senderUsername = null,
@@ -50,12 +55,11 @@ class TelegramSourceContractTest {
         mimeType = "audio/mpeg", station = "Capullo", groupType = "GROUP", reactions = null,
     )
 
-    private fun stack(client: FakeTelegramClient, dao: FakeMediaMessageDao): DownloadManager =
-        DownloadManager(
-            repository = TelegramRepository(client, dao),
-            dao = dao,
-            bufferSizeGb = { 100f }, // large: never evict during the test
-        )
+    private fun stack(client: FakeTelegramClient, dao: FakeMediaMessageDao): DownloadManager = DownloadManager(
+        repository = TelegramRepository(client, dao),
+        dao = dao,
+        bufferSizeGb = { 100f }, // large: never evict during the test
+    )
 
     @Test fun `mediaRequestFor suspends on download, returns file URI, and enriches now-playing`() = runTest {
         val client = FakeTelegramClient(tmp)

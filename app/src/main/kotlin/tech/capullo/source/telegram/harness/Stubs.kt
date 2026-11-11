@@ -53,19 +53,14 @@ private object NoopTelegramClient : TelegramClient {
     override suspend fun checkPassword(password: String) {}
     override suspend fun getChats(limit: Int): List<TelegramChat> = emptyList()
     override suspend fun getMessageReactions(chatId: Long, messageId: Long): String? = null
-    override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo =
-        MessageReactionsInfo(null, null, false, emptyList(), emptyList())
+    override suspend fun getReactionsInfo(chatId: Long, messageId: Long): MessageReactionsInfo = MessageReactionsInfo(null, null, false, emptyList(), emptyList())
     override suspend fun setOwnReaction(chatId: Long, messageId: Long, emoji: String?) {}
-    override suspend fun getChatHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage =
-        HistoryPage(emptyList(), 0)
-    override suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage =
-        HistoryPage(emptyList(), 0)
-    override suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit): String =
-        error("harness never downloads")
+    override suspend fun getChatHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage = HistoryPage(emptyList(), 0)
+    override suspend fun getChatDocumentHistory(chatId: Long, fromMessageId: Long, limit: Int): HistoryPage = HistoryPage(emptyList(), 0)
+    override suspend fun downloadFile(chatId: Long, messageId: Long, onProgress: (Float) -> Unit): String = error("harness never downloads")
     override suspend fun downloadChatPhoto(fileId: Int): String? = null
     override suspend fun sendMessage(chatId: Long, text: String) {}
     override fun close() {}
 }
 
-internal fun MainActivity.throwawayRepository(): TelegramRepository =
-    TelegramRepository(NoopTelegramClient, InMemoryDao)
+internal fun MainActivity.throwawayRepository(): TelegramRepository = TelegramRepository(NoopTelegramClient, InMemoryDao)
